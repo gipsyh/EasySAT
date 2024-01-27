@@ -171,6 +171,41 @@ int Solver::propagate() {
     return -1;                                          // Meet a convergence
 }
 
+bool Solver::lit_redundant(int lit) {
+    int source = time_stamp;
+    int removable = time_stamp + 1;
+    int failed = time_stamp + 2;
+
+    if (reason[abs(lit)] == -1)
+        return false;
+    std::vector<std::pair<int, int> > stack;
+    stack.push_back(std::make_pair(lit, 1));
+    while (!stack.empty()) {
+        auto [p, b] = stack.back();
+        stack.pop_back();
+        auto cref = reason[abs(p)];
+        Clause &c = clause_DB[cref];
+        for (int i = b; i < (int)c.lit.size(); i++) {
+            int var = abs(c[i]);
+            if (level[var] == 0 || mark[var] == source || mark[var] == removable)
+                continue;
+            if (reason[var] == -1 || mark[var] == failed) {
+                stack.push_back(std::make_pair(p, 0));
+                for (const auto &[l, _] : stack)
+                    if (mark[abs(l)] < time_stamp)
+                        mark[abs(l)] = failed;
+                return false;
+            }
+            stack.push_back(std::make_pair(p, i + 1));
+            stack.push_back(std::make_pair(c[i], 1));
+            continue;
+        }
+        if (mark[abs(p)] < time_stamp)
+            mark[abs(p)] = removable;
+    }
+    return true;
+}
+
 int Solver::analyze(int conflict, int &backtrackLevel, int &lbd) {
     ++time_stamp;
     learnt.clear();
@@ -201,7 +236,14 @@ int Solver::analyze(int conflict, int &backtrackLevel, int &lbd) {
         conflict = reason[abs(resolve_lit)], mark[abs(resolve_lit)] = 0, should_visit_ct--;
     } while (should_visit_ct > 0);                   // Have find the convergence node in the highest level (First UIP)
     learnt[0] = -resolve_lit;
-    ++time_stamp, lbd = 0;
+
+    int i = 1, j = 1;
+    for (; i < (int)learnt.size(); i++)
+        if (!lit_redundant(learnt[i]))
+                learnt[j++] = learnt[i];
+    learnt.resize(j);
+
+    time_stamp += 3, lbd = 0;
     for (int i = 0; i < (int)learnt.size(); i++) {   // Calculate the LBD.
         int l = level[abs(learnt[i])];
         if (l && mark[l] != time_stamp) 

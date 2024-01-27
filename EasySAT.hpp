@@ -82,6 +82,7 @@ public:
     void assign(int lit, int level, int cref);              // Assigned a variable.
     int  propagate();                                       // BCP
     void backtrack(int backtrack_level);                    // Backtracking
+    bool lit_redundant(int lit);                    // minimal learnt
     int  analyze(int cref, int &backtrack_level, int &lbd); // Conflict analyzation.
     int  parse(char *filename);                             // Read CNF file.
     int  solve();                                           // Solving.
