@@ -185,6 +185,7 @@ bool Solver::lit_redundant(int lit) {
         stack.pop_back();
         auto cref = reason[abs(p)];
         Clause &c = clause_DB[cref];
+        bool ct = false;
         for (int i = b; i < (int)c.lit.size(); i++) {
             int var = abs(c[i]);
             if (level[var] == 0 || mark[var] == source || mark[var] == removable)
@@ -198,8 +199,11 @@ bool Solver::lit_redundant(int lit) {
             }
             stack.push_back(std::make_pair(p, i + 1));
             stack.push_back(std::make_pair(c[i], 1));
-            continue;
+            ct = true;
+            break;
         }
+        if (ct)
+            continue;
         if (mark[abs(p)] < time_stamp)
             mark[abs(p)] = removable;
     }
